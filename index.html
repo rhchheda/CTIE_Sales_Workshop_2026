@@ -15,7 +15,37 @@
     min-height: 100vh;
   }
 
+  header {
+    width: 100%;
+    background: linear-gradient(135deg, #1a3a6e, #2c5aa0);
+    color: #ffffff;
+    text-align: center;
+    padding: 32px 16px 28px;
+    box-sizing: border-box;
+    opacity: 0;
+    animation: fadeInDown 0.7s ease-out forwards;
+  }
+
+  header h1 {
+    margin: 0 0 6px;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+
+  header p {
+    margin: 0;
+    font-size: 14px;
+    color: #cfe0f5;
+  }
+
+  @keyframes fadeInDown {
+    0%   { opacity: 0; transform: translateY(-14px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
   .form-wrapper {
+    position: relative;
     width: 100%;
     max-width: 760px;
     margin-top: 24px;
@@ -25,6 +55,121 @@
     width: 100%;
     height: 1896px;
     border: none;
+    display: block;
+  }
+
+  /* ---------- Thank-you overlay ----------
+     Google's confirmation screen renders inside the iframe (cross-origin),
+     so it can't be styled/animated directly. This overlay sits on top of
+     it instead, triggered by watching the iframe's load events: the first
+     load is the form itself, a second load means it navigated to the
+     confirmation page after submit. */
+  .thankyou-overlay {
+    position: absolute;
+    inset: 0;
+    background: #f8f9fa;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+    box-sizing: border-box;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+
+  .thankyou-overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .check-circle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: #2c5aa0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 20px;
+    transform: scale(0);
+  }
+
+  .thankyou-overlay.show .check-circle {
+    animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s forwards;
+  }
+
+  .check-circle svg {
+    width: 36px;
+    height: 36px;
+  }
+
+  .check-circle path {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 40;
+    stroke-dashoffset: 40;
+  }
+
+  .thankyou-overlay.show .check-circle path {
+    animation: drawCheck 0.4s ease-out 0.5s forwards;
+  }
+
+  @keyframes popIn {
+    to { transform: scale(1); }
+  }
+
+  @keyframes drawCheck {
+    to { stroke-dashoffset: 0; }
+  }
+
+  .thankyou-overlay h2 {
+    margin: 0 0 8px;
+    color: #1a3a6e;
+    font-size: 20px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .thankyou-overlay p.sub {
+    margin: 0 0 20px;
+    color: #5f6368;
+    font-size: 14px;
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .thankyou-overlay.show h2,
+  .thankyou-overlay.show p.sub {
+    animation: fadeInUp 0.5s ease-out 0.35s forwards;
+  }
+
+  @keyframes fadeInUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .again-btn {
+    border: 1px solid #2c5aa0;
+    color: #2c5aa0;
+    background: transparent;
+    padding: 8px 18px;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  .thankyou-overlay.show .again-btn {
+    animation: fadeInUp 0.5s ease-out 0.5s forwards;
+  }
+
+  .again-btn:hover {
+    background: #eef3fb;
   }
 
   footer {
@@ -56,15 +201,49 @@
 </head>
 <body>
 
+  <header>
+    <h1>KLE-CTIE Sales Workshop 2026</h1>
+    <p>Startup Needs Assessment</p>
+  </header>
+
   <div class="form-wrapper">
-    <iframe src="https://docs.google.com/forms/d/e/1FAIpQLScP8dyYBpzXBYXTRzFDMqy3Yn7Pa5MaKFgp0Qz7khnKuH4fzw/viewform?embedded=true" title="KLE-CTIE Sales Workshop 2026 Form">
+    <iframe id="gform" src="https://docs.google.com/forms/d/e/1FAIpQLScP8dyYBpzXBYXTRzFDMqy3Yn7Pa5MaKFgp0Qz7khnKuH4fzw/viewform?embedded=true" title="KLE-CTIE Sales Workshop 2026 Form">
       Loading form…
     </iframe>
+
+    <div class="thankyou-overlay" id="thankyou">
+      <div class="check-circle">
+        <svg viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6"/></svg>
+      </div>
+      <h2>Thank you for your response!</h2>
+      <p class="sub">KLE-CTIE has received your input for the Sales Workshop 2026.</p>
+      <button class="again-btn" onclick="document.getElementById('thankyou').classList.remove('show')">
+        Submit another response
+      </button>
+    </div>
   </div>
 
   <footer>
     <span class="footer-text">Made with <span class="heart">♥</span> ~rhc &middot; EE Lab, KLE-CTIE</span>
   </footer>
+
+  <script>
+    // First load = the blank form itself. Any load after that means the
+    // iframe navigated (almost always the post-submit confirmation page),
+    // so we reveal our own animated thank-you overlay on top of it.
+    (function () {
+      var iframe = document.getElementById('gform');
+      var thankyou = document.getElementById('thankyou');
+      var loadCount = 0;
+
+      iframe.addEventListener('load', function () {
+        loadCount++;
+        if (loadCount > 1) {
+          thankyou.classList.add('show');
+        }
+      });
+    })();
+  </script>
 
 </body>
 </html>
